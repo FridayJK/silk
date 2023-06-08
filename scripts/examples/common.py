@@ -9,11 +9,15 @@ from copy import deepcopy
 
 import numpy as np
 import skimage.io as io
+from skimage.transform import rescale, resize
 import torch
 
 import torchvision
 from silk.backbones.silk.silk import SiLKVGG as SiLK
 from silk.backbones.superpoint.vgg import ParametricVGG
+
+from silk.backbones.unet.unet import UNet
+from silk.backbones.unet.unet import ParametricUNet
 
 from silk.config.model import load_model_from_checkpoint
 from silk.models.silk import matcher
@@ -24,10 +28,13 @@ CHECKPOINT_PATH = os.path.join(
 )
 DEVICE = "cuda:0"
 
-SILK_NMS = 0  # NMS radius, 0 = disabled
+# SILK_NMS = 0  # NMS radius, 0 = disabled
+SILK_NMS = 3  # NMS radius, 0 = disabled
 SILK_BORDER = 0  # remove detection on border, 0 = disabled
-SILK_THRESHOLD = 1.0  # keypoint score thresholding, if # of keypoints is less than provided top-k, then will add keypoints to reach top-k value, 1.0 = disabled
-SILK_TOP_K = 10000  # minimum number of best keypoints to output, could be higher if threshold specified above has low value
+# SILK_THRESHOLD = 1.0  # keypoint score thresholding, if # of keypoints is less than provided top-k, then will add keypoints to reach top-k value, 1.0 = disabled
+SILK_THRESHOLD = 0.6  # keypoint score thresholding, if # of keypoints is less than provided top-k, then will add keypoints to reach top-k value, 1.0 = disabled
+# SILK_TOP_K = 10000  # minimum number of best keypoints to output, could be higher if threshold specified above has low value
+SILK_TOP_K = 20000  # minimum number of best keypoints to output, could be higher if threshold specified above has low value
 SILK_DEFAULT_OUTPUT = (  # outputs required when running the model
     "dense_positions",
     "normalized_descriptors",
@@ -39,13 +46,52 @@ SILK_BACKBONE = ParametricVGG(
     padding=0,
     normalization_fn=[torch.nn.BatchNorm2d(i) for i in (64, 64, 128, 128)],
 )
+SILK_BACKBONE_NNET = ParametricUNet(
+    n_channels=1,
+    n_classes=128,
+    input_feature_channels=16,
+    bilinear=False,
+    use_max_pooling=True,
+    n_scales=3,
+    length=1,
+    down_channels=[32, 64, 128],
+    up_channels=[256, 256, 128],
+    kernel=5,
+    padding=0,
+)
+# SILK_BACKBONE_NNET = ParametricUNet(
+#     n_channels=1,
+#     n_classes=128,
+#     input_feature_channels=16,
+#     bilinear=False,
+#     use_max_pooling=True,
+#     n_scales=4,
+#     length=1,
+#     down_channels=[32, 64, 128, 256],
+#     up_channels=[512, 256, 256, 128],
+#     kernel=5,
+#     padding=1,
+# )
+# SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=1.0)
+# SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=0.5)
 SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=0.6)
+# SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=0.7)
+# SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=0.8)
+# SILK_MATCHER = matcher(postprocessing="ratio-test", threshold=0.9)
+# SILK_MATCHER = matcher(postprocessing="double-softmax", threshold=1.0, temperature=0.1)
+# SILK_MATCHER = matcher(postprocessing="double-softmax", threshold=0.95, temperature=0.1)
+# SILK_MATCHER = matcher(postprocessing="double-softmax", threshold=0.9, temperature=0.1)
 # SILK_MATCHER = matcher(postprocessing="double-softmax", threshold=0.6, temperature=0.1)
 # SILK_MATCHER = matcher(postprocessing="none")
 
 
-def load_images(*paths, as_gray=True):
-    images = np.stack([io.imread(path, as_gray=as_gray) for path in paths])
+def load_images(*paths, img_shape=(1080, 1920), as_gray=True):
+    img_tmps = [io.imread(path, as_gray=as_gray) for path in paths]
+    images = [rescale(img_tmp, img_shape[0]/img_tmp.shape[0]) for img_tmp in img_tmps]
+
+
+    # images = np.stack([io.imread(path, as_gray=as_gray) for path in paths])
+    images = np.stack(images)
     images = torch.tensor(images, device=DEVICE, dtype=torch.float32)
     if not as_gray:
         images = images.permute(0, 3, 1, 2)
@@ -64,7 +110,7 @@ def get_model(
     # load model
     model = SiLK(
         in_channels=1,
-        backbone=deepcopy(SILK_BACKBONE),
+        backbone=deepcopy(SILK_BACKBONE_NNET),
         detection_threshold=SILK_THRESHOLD,
         detection_top_k=SILK_TOP_K,
         nms_dist=nms,

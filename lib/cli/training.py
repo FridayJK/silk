@@ -81,3 +81,7 @@ def main(config: DictConfig):
         "trainer": trainer,
         "config": OmegaConf.to_object(config),
     }
+
+
+if __name__ == "__main__":
+    main()

@@ -2,7 +2,10 @@ defaults:
   - defaults
 
 command: "training"
-continue_from_checkpoint: null
+# continue_from_checkpoint: null
+# continue_from_checkpoint: "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/assets/models/silk/coco-rgb-aug.ckpt"
+# continue_from_checkpoint: "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/output/silk/train_log/2023-05-28-baseline/08-15-39/lightning_logs/version_0/checkpoints/epoch=9-step=39999.ckpt"
+continue_from_checkpoint: "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-05-30/13-09-08-asset/lightning_logs/version_0/checkpoints/epoch=9-step=31679.ckpt"
 model: ???
 trainer:
   strategy: ddp

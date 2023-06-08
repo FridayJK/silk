@@ -1,0 +1,22 @@
+defaults:
+  - silk-vgg
+
+# overwrite the default backbone
+backbone:
+  _target_: silk.backbones.unet.unet.ParametricUNet
+  n_channels: 1
+  n_classes: 128
+  input_feature_channels: 16
+  bilinear: false
+  use_max_pooling: true
+  n_scales: 3
+  length: 1
+  # down_channels: [32, 64, 128, 256]
+  # up_channels: [512, 256, 256, 128]
+  down_channels: [32, 64, 128]
+  up_channels: [256, 256, 128]
+  # up_channels: [256, 256, 64, 128]
+  kernel: 5
+  # kernel: 3
+  padding: 0
+  # padding: 1

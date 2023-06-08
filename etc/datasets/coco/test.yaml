@@ -2,5 +2,5 @@ defaults:
   - defaults
   - _self_
 
-root: /datasets01/COCO/022719/test2017
+root: /workspace/mnt/storage/zhangjunkang/zjk1/data/COCO/test2017
 annFile: null

@@ -3,7 +3,7 @@ defaults:
   - logger: defaults
   - hydra: local
   - _self_
-  - mode: ???
+  - mode: train-silk
 
 hydra:
   sweep:

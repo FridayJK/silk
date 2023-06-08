@@ -5,3 +5,5 @@ __pycache__
 *.h5
 .nfs*
 core
+*.pkl
+*.png
