@@ -1,0 +1,11 @@
+scikit-image
+hydra-core
+omegaconf
+#pytorch-lightning
+loguru
+opencv-python-headless
+h5py
+
+albumentations
+
+# pip install --upgrade "jax[cuda11_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html

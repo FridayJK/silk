@@ -7,4 +7,5 @@ defaults:
 # gaosu_day + coco2017
 root: /workspace/mnt/storage/zhangjunkang/zjk1/data
 # listFile: /workspace/mnt/storage/zhangjunkang/zjk1/data/coco_train2017_and_gaosu_day_list.txt
-listFile: /workspace/mnt/storage/zhangjunkang/zjk1/data/coco_train2017_2W_and_gaosu_day_list.txt
+# listFile: /workspace/mnt/storage/zhangjunkang/zjk1/data/coco_train2017_2W_and_gaosu_day_list.txt  #coco sample 2w, and gaosu sample data
+listFile: /workspace/mnt/storage/zhangjunkang/zjk1/data/silk_train_list_2.txt    #coco sample 2w, and gaosu sample data, and imageNet10K sample 1W, and kttit_instance 4520, and ade20k_train sample 1w, and tusimple 6408

@@ -26,7 +26,23 @@ def main():
     # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-05-30/13-09-08-asset/lightning_logs/version_0/checkpoints/epoch=7-step=25343.ckpt" # ***
     # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-05-30/13-09-08/lightning_logs/version_0/checkpoints/epoch=8-step=28511.ckpt"
     # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-05-31/10-05-28/lightning_logs/version_0/checkpoints/epoch=9-step=31679.ckpt" # lr0.00001
-    ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-02/10-06-17/lightning_logs/version_0/checkpoints/epoch=0-step=3167.ckpt"  #nms=3
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-02/10-06-17/lightning_logs/version_0/checkpoints/epoch=0-step=3167.ckpt"  #nms=3
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-24/16-00-20/lightning_logs/version_0/checkpoints/epoch=0-step=7033.ckpt"  #nms=3
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-24/16-00-20/lightning_logs/version_0/checkpoints/epoch=1-step=14067.ckpt"  #nms=3
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-24/16-00-20/lightning_logs/version_0/checkpoints/epoch=2-step=21101.ckpt"  #nms=3
+    ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-24/16-00-20/lightning_logs/version_0/checkpoints/epoch=3-step=28135.ckpt"  #nms=3
+
+    # init from "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-02/10-06-17/lightning_logs/version_0/checkpoints/epoch=0-step=3167.ckpt"
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-25/08-59-10/lightning_logs/version_0/checkpoints/epoch=9-step=70339.ckpt"  # *** sota
+    # 5w stage2 lr=0.00001
+    # ckpt = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/var/silk-cli/run/training/2023-06-27/02-57-01/lightning_logs/version_0/checkpoints/epoch=5-step=42203.ckpt"  # *** sota
+
+
+    save_root_path = "./output/silk_eval/"
+    # test_dir_v = "5w-stage2_nms3-e5-0.8-7033"
+    # test_dir_v = "42203-sota"
+    # test_dir_v = "70339-sota"
+    test_dir_v = "-e3-28135-sota"
     
     model = get_model(checkpoint=ckpt, default_outputs=("sparse_positions", "sparse_descriptors"))
 
@@ -79,9 +95,9 @@ def main():
                         sparse_positions_0,
                         sparse_positions_1,
                     )
-                    save_image(image_pair, "./output/silk_eval/nms3-e0-0.6", preSetName+"_"+dst_img_name,)
+                    save_image(image_pair, os.path.join(save_root_path, test_dir_v), preSetName+"_"+dst_img_name,)
     
-    with open("silk-homograph-nms3-e0-0.6.pkl", "wb") as f:
+    with open("silk-homograph" + test_dir_v + ".pkl", "wb") as f:
         pickle.dump(homo_graph_dict, f)
 
 
