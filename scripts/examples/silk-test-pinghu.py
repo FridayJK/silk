@@ -2,6 +2,8 @@ import os, sys
 import cv2
 import pickle
 import numpy as np
+import torch
+import onnx
 sys.path.append("./")
 
 from common import get_model, load_images, SILK_MATCHER
@@ -48,6 +50,8 @@ model = get_model(checkpoint=ckpt, default_outputs=("sparse_positions", "sparse_
 
 
 root_path = "/workspace/mnt/storage/zhangjunkang/zjk_fileSystem/github/silk/data/PingHu"
+# root_path = "/workspace/mnt/storage/zhangjunkang/zjk1/data/sample_data-1/172.168.137.236/"
+
 
 # img_src = "XinHua/snapshot_jtsj_1000_ckh83i1bk0sg.jpg"
 # img_dst = "XinHua/YHyuHIHuA37dgNBY7fWK3M1m_0_raw.jpg"
@@ -60,16 +64,31 @@ img_dst = "XinXing1/8rIUCCrapusKpRPH_2iKKz4N_0_raw.jpg"
 # img_src = "XinHuaDangHu/snapshot_jtsj_1000_ckh838ybuj9c.jpg"
 # img_dst = "XinHuaDangHu/dQG_SUm5yzZ0wlPYk2190il__0_raw.jpg"
 # img_dst = "XinHuaDangHu/dAHt54mxMfbFea-i89drmZLQ_0_raw.jpg"
+# img_src = "sample_preset1_ori.jpeg"
+# # img_dst = "sample_preset1_ori.jpeg"
+# img_dst = "sample_preset1_left4.jpeg"
 
 img_src = os.path.join(root_path, img_src)
 img_dst = os.path.join(root_path, img_dst)
-IMG_SHAPE = (1080, 1920)
-# IMG_SHAPE = (544, 960)
+# IMG_SHAPE = (1080, 1920)
+IMG_SHAPE = (544, 960)
 
 
 
 images_q = cv2.imread(img_src)
 images_0 = load_images(img_src, img_shape=IMG_SHAPE)
+# -----------------------onnx-----------------------
+# onnx_file_name = "./test1.onnx"
+# with torch.no_grad():
+#     torch.onnx.export(model, images_0, onnx_file_name, opset_version=13, verbose=False, do_constant_folding=True,)
+
+# onnx_model = onnx.load_model(onnx_file_name)
+# onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+# onnx.checker.check_model(onnx_model)
+# onnx.save(onnx_model, onnx_file_name)
+# --------------------------------------------------
+
+
 sparse_positions_0_, sparse_descriptors_0 = model(images_0)
 
 images_r = cv2.imread(img_dst)
@@ -92,13 +111,15 @@ H_, mask_ = cv2.findHomography(np.array(sparse_positions_0_h).squeeze(), np.arra
 
 rect_label = os.path.join(os.path.dirname(img_src), "rect.txt")
 rect = np.loadtxt(rect_label, delimiter=",").astype(np.int32)
+# rect = np.array([[900, 500],[1000, 600]]).astype(np.int32)
+
 pointDst_predict = homography_trans2(H_, rect)
 
 cv2.rectangle(images_q, (rect[0,0], rect[0,1]), (rect[1,0], rect[1,1]), (0, 0, 255), 2)
 cv2.rectangle(images_r, pointDst_predict[0], pointDst_predict[1], (0, 0, 255), 2)
 
 stem0_name, stem1_name = os.path.basename(img_src), os.path.basename(img_dst)
-out_path = "./output_pinghu_70339"
+out_path = "./output_pinghu_70339_nms2_mean_1filter"
 if(not os.path.exists(out_path)):
     os.mkdir(out_path)
 cv2.imwrite(os.path.join(out_path, stem0_name),images_q)
