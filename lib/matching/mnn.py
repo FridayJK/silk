@@ -16,17 +16,18 @@ def compute_dist(desc_0, desc_1, dist_type="dot"):
     if dist_type == "dot":
         distance = 1 - torch.matmul(desc_0, desc_1.T)
     elif dist_type == "cosine":
-        desc_0 = F.normalize(
-            desc_0,
-            p=2,
-            dim=1,
-        )
-        desc_1 = F.normalize(
-            desc_1,
-            p=2,
-            dim=1,
-        )
+        # desc_0 = F.normalize(
+        #     desc_0,
+        #     p=2,
+        #     dim=1,
+        # )
+        # desc_1 = F.normalize(
+        #     desc_1,
+        #     p=2,
+        #     dim=1,
+        # )
         distance = 1 - torch.matmul(desc_0, desc_1.T)
+        # distance = torch.matmul(desc_0, desc_1.T)
     elif dist_type == "l2":
         distance = torch.cdist(desc_0, desc_1, p=2)
 
@@ -55,6 +56,23 @@ def match_descriptors(
         mask = indices1 == matches1[indices2]
         indices1 = indices1[mask]
         indices2 = indices2[mask]
+        cos_matched_num = indices1.shape[0]
+        print(f'cross_check num: {indices1.shape[0]}')
+        # mask2
+        # dis_th = 0.1
+        dis_th = 1.7893
+        # mask2 = distances[indices1,indices2]<dis_th
+        # print(f'min:{(1-distances[indices1,indices2]).min()} max:{(1-distances[indices1,indices2]).max()}')
+        mask2 = (1-distances[indices1,indices2])>1.7
+        indices1 = indices1[mask2]
+        indices2 = indices2[mask2]
+        print(f'dis_check num: {indices1.shape[0]}')
+        fine_matched_num = indices1.shape[0]
+        det_num = min(distances.shape[0], distances.shape[1])
+        confidence37 = 0.3*fine_matched_num/cos_matched_num + 0.7*cos_matched_num/det_num
+        confidence55 = 0.5*fine_matched_num/cos_matched_num + 0.5*cos_matched_num/det_num
+        print(f'conf37:{confidence37}   conf55:{confidence55}')
+
 
     if max_distance < torch.inf:
         mask = distances[indices1, indices2] < max_distance
@@ -73,6 +91,7 @@ def match_descriptors(
         mask = ratio < max_ratio
         indices1 = indices1[mask]
         indices2 = indices2[mask]
+    print(f'max_ratio num: {indices1.shape[0]}')
 
     matches = torch.vstack((indices1, indices2))
 
@@ -97,6 +116,7 @@ def mutual_nearest_neighbor(
 ):
     dist = distance_fn(desc_0, desc_1)
     matches = match_fn(dist)
+    # print(f'num matchs:{matches.shape}')
     return matches
 
 

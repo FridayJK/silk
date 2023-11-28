@@ -34,6 +34,16 @@ def logits_to_prob(logits: torch.Tensor, channel_dim: int = 1) -> torch.Tensor:
     # 65 is 8 * 8 + 1, where cell_size = 8
     channels = logits.shape[channel_dim]
     if channels == 1:
+        # max_v = logits.max()
+        # min_v = logits.min()
+        # max_v = -9.0
+        # min_v = -9.7
+        max_v = -9.05
+        min_v = -9.65
+        # max_v = -9.1
+        # min_v = -9.7
+        # print(f'max:{max_v}, min:{min_v}')
+        logits = (logits - min_v)/((max_v - min_v)/16) - 8
         prob = torch.sigmoid(logits)
     else:
         prob = torch.softmax(logits, dim=channel_dim)
@@ -122,6 +132,7 @@ def prob_map_to_points_map(
                 dim=1,
                 interpolation="midpoint",
             )
+            # print(top_k_threshold.cpu())
         prob_thresh = torch.minimum(top_k_threshold, prob_thresh)
         prob_thresh = prob_thresh.unsqueeze(-1).unsqueeze(-1)
 
@@ -131,7 +142,7 @@ def prob_map_to_points_map(
         prob_map,
         torch.tensor(0.0, device=prob_map.device),
     )
-
+    print(f"nms stage:{(prob_map>0).sum()}")
     return prob_map  # batch_output
 
 
@@ -239,102 +250,132 @@ def original_nms(image_probs: torch.Tensor, nms_dist: int = 4) -> torch.Tensor:
 
     return image_probs_nms
 
-
 def fast_nms(
-    image_probs: torch.Tensor,
-    nms_dist: int = 4,
-    max_iter: int = -1,
-    min_value: float = 0.0,
-) -> torch.Tensor:
-    """Produce same result as `original_nms` (see documentation).
-    The process is slightly different :
-      1. Find any local maximum (and count them).
-      2. Suppress their neighbors (by setting them to 0).
-      3. Repeat 1. and 2. until the number of local maximum stays the same.
+        image_probs: torch.Tensor,
+        nms_dist: int = 4,
+        max_iter: int = -1,
+        min_value: float = 0.0,
+        ):
+    """ Fast Non-maximum suppression to remove nearby points """
+    assert (nms_dist >= 0)
 
-    Performance
-    -----------
-    The original implementation takes about 2-4 seconds on a batch of 32 images of resolution 240x320.
-    This fast implementation takes about ~90ms on the same input.
+    def max_pool(x):
+        return F.max_pool2d(x, kernel_size=nms_dist * 2 + 1, stride=1, padding=nms_dist)
+    
+    off_th = 128
 
-    Parameters
-    ----------
-    image_probs : torch.Tensor
-        Tensor of shape BxCxHxW.
-    nms_dist : int, optional
-        The minimum distance between two predicted corners after NMS, by default 4
-    max_iter : int, optional
-        Maximum number of iteration, by default -1.
-        Setting this number to a positive integer guarantees execution speed, but not correctness (i.e. good approximation).
-    min_value : float
-        Minimum value used for suppression.
+    # image_probs = image_probs*2*1000
+    max_mask = max_pool(image_probs)
+    max_mask = torch.clamp((image_probs-max_mask)*off_th+1, 0, 1)
 
-    Returns
-    -------
-    torch.Tensor
-        Tensor of shape BxCxHxW containing NMS suppressed input.
-    """
-    if nms_dist == 0:
-        return image_probs
+    return max_mask*image_probs
 
-    ks = 2 * nms_dist + 1
-    midpoint = (ks * ks) // 2
-    count = None
-    batch_size = image_probs.shape[0]
+    # image_probs1 = max_mask*image_probs
+    # max_mask1 = max_pool(image_probs1)
+    # max_mask1 = torch.clamp((image_probs1-max_mask1)*off_th+1, 0, 1)
 
-    i = 0
-    while True:
-        if i == max_iter:
-            break
+    # return max_mask1*image_probs1
 
-        # get neighbor probs in last dimension
-        unfold_image_probs = F.unfold(
-            image_probs,
-            kernel_size=(ks, ks),
-            dilation=1,
-            padding=nms_dist,
-            stride=1,
-        )
-        unfold_image_probs = unfold_image_probs.reshape(
-            batch_size,
-            ks * ks,
-            image_probs.shape[-2],
-            image_probs.shape[-1],
-        )
+    # image_probs2 = max_mask1*image_probs1
+    # max_mask2 = max_pool(image_probs2)
+    # max_mask2 = torch.clamp((image_probs2-max_mask2)*100000+1, 0, 1)
+    # return max_mask2*image_probs2
 
-        # check if middle point is local maximum
-        max_idx = unfold_image_probs.argmax(dim=1, keepdim=True)
-        mask = max_idx == midpoint
+# def fast_nms(
+#     image_probs: torch.Tensor,
+#     nms_dist: int = 4,
+#     max_iter: int = -1,
+#     min_value: float = 0.0,
+# ) -> torch.Tensor:
+#     """Produce same result as `original_nms` (see documentation).
+#     The process is slightly different :
+#       1. Find any local maximum (and count them).
+#       2. Suppress their neighbors (by setting them to 0).
+#       3. Repeat 1. and 2. until the number of local maximum stays the same.
 
-        # count all local maximum that are found
-        new_count = mask.sum()
+#     Performance
+#     -----------
+#     The original implementation takes about 2-4 seconds on a batch of 32 images of resolution 240x320.
+#     This fast implementation takes about ~90ms on the same input.
 
-        # we stop if we din't not find any additional local maximum
-        if new_count == count:
-            break
-        count = new_count
+#     Parameters
+#     ----------
+#     image_probs : torch.Tensor
+#         Tensor of shape BxCxHxW.
+#     nms_dist : int, optional
+#         The minimum distance between two predicted corners after NMS, by default 4
+#     max_iter : int, optional
+#         Maximum number of iteration, by default -1.
+#         Setting this number to a positive integer guarantees execution speed, but not correctness (i.e. good approximation).
+#     min_value : float
+#         Minimum value used for suppression.
 
-        # propagate local-maximum information to local neighbors (to suppress them)
-        mask = mask.float()
-        mask = mask.expand(-1, ks * ks, -1, -1)
-        mask = mask.view(batch_size, ks * ks, -1)
-        mask = mask.contiguous()
-        mask[:, midpoint] = 0.0  # make sure we don't suppress the local maximum itself
-        fold_ = F.fold(
-            mask,
-            output_size=image_probs.shape[-2:],
-            kernel_size=(ks, ks),
-            dilation=1,
-            padding=nms_dist,
-            stride=1,
-        )
+#     Returns
+#     -------
+#     torch.Tensor
+#         Tensor of shape BxCxHxW containing NMS suppressed input.
+#     """
+#     if nms_dist == 0:
+#         return image_probs
 
-        # suppress all points who have a local maximum in their neighboorhood
-        image_probs = image_probs.masked_fill(fold_ > 0.0, min_value)
+#     ks = 2 * nms_dist + 1
+#     midpoint = (ks * ks) // 2
+#     count = None
+#     batch_size = image_probs.shape[0]
 
-        i += 1
+#     i = 0
+#     while True:
+#         if i == max_iter:
+#             break
 
-    return image_probs
+#         # get neighbor probs in last dimension
+#         unfold_image_probs = F.unfold(
+#             image_probs,
+#             kernel_size=(ks, ks),
+#             dilation=1,
+#             padding=nms_dist,
+#             stride=1,
+#         )
+#         unfold_image_probs = unfold_image_probs.reshape(
+#             batch_size,
+#             ks * ks,
+#             image_probs.shape[-2],
+#             image_probs.shape[-1],
+#         )
+
+#         # check if middle point is local maximum
+#         max_idx = unfold_image_probs.argmax(dim=1, keepdim=True)
+#         mask = max_idx == midpoint
+
+#         # count all local maximum that are found
+#         new_count = mask.sum()
+
+#         # we stop if we din't not find any additional local maximum
+#         if new_count == count:
+#             break
+#         count = new_count
+
+#         # propagate local-maximum information to local neighbors (to suppress them)
+#         mask = mask.float()
+#         mask = mask.expand(-1, ks * ks, -1, -1)
+#         mask = mask.view(batch_size, ks * ks, -1)
+#         mask = mask.contiguous()
+#         mask[:, midpoint] = 0.0  # make sure we don't suppress the local maximum itself
+#         fold_ = F.fold(
+#             mask,
+#             output_size=image_probs.shape[-2:],
+#             kernel_size=(ks, ks),
+#             dilation=1,
+#             padding=nms_dist,
+#             stride=1,
+#         )
+
+#         # suppress all points who have a local maximum in their neighboorhood
+#         image_probs = image_probs.masked_fill(fold_ > 0.0, min_value)
+
+#         i += 1
+
+#     return image_probs
 
 
 def space_to_depth(prob: torch.Tensor, cell_size: int = 8) -> torch.Tensor:

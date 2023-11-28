@@ -207,12 +207,15 @@ class Flow:
     def flow_from_tape(self, tape, output_indexes, inputs):
         session = [None] * len(self._transitions)
         for index, to_clean in tape:
+            # if(index>6):
+            #     continue
             session[index] = self._transitions[index](session, inputs)
             for i in to_clean:
                 session[i] = None
 
         if isinstance(output_indexes, int):
             return session[output_indexes]
+        # output_indexes = (3, 6)
         return tuple(session[index] for index in output_indexes)
 
     def names_to_indexes(self, names):

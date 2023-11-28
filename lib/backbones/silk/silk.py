@@ -9,6 +9,7 @@ from typing import Iterable, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from silk.backbones.abstract.shared_backbone_multiple_heads import (
     SharedBackboneMultipleHeads,
@@ -266,6 +267,7 @@ class SiLKVGG(SiLKBase):
                 normalize_descriptors,
             )
 
+            # descriptors = F.normalize(descriptors, p=2, dim=1)
             sparse_descriptors.append(descriptors)
         return tuple(sparse_descriptors)
 
